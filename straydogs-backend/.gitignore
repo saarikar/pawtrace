@@ -1,0 +1,7 @@
+.env
+__pycache__/
+*.pyc
+dog_database/
+*.npy
+stray_dog_model.h5
+yolov8n.pt

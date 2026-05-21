@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+ultralytics==8.3.141
+tensorflow==2.21.0
+opencv-python
+scikit-learn
+numpy
+supabase
+python-dotenv
