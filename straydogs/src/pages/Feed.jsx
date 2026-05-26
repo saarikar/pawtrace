@@ -1,42 +1,59 @@
 import { useState, useEffect } from 'react'
 import { getDogs } from '../lib/data.js'
 import { useApp } from '../App.jsx'
-import { COLORS, SIZES } from '../lib/vision.js'
+
+const ORANGE = '#E07B39'
+const DARK_ORANGE = '#C0510B'
+const BG = '#FDF8F4'
+const GRAY = '#6B7280'
+const LIGHT_GRAY = '#F3F4F6'
+const GREEN = '#16A34A'
+const RED = '#DC2626'
 
 function timeAgo(iso) {
   const s = (Date.now() - new Date(iso)) / 1000
-  if (s < 3600) return `${Math.floor(s/60)}m ago`
-  if (s < 86400) return `${Math.floor(s/3600)}h ago`
-  return `${Math.floor(s/86400)}d ago`
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
 }
 
-const STATUS_BADGES = {
-  being_rescued: { label: '🚑 Being rescued', bg: '#fff8e1', color: '#e65100' },
-  in_shelter:    { label: '🏠 In shelter',    bg: '#e3f2fd', color: '#1565c0' },
-  reunited:      { label: '✅ Reunited',       bg: '#e8f5e9', color: '#2e7d32' },
-}
+function PostCard({ dog, onClick }) {
+  const isLost = dog.report_type === 'lost_pet'
+  const statusColor = isLost ? RED : GREEN
+  const statusLabel = isLost ? 'LOST' : 'FOUND'
+  const name = isLost
+    ? (dog.pet_name ? `LOST: ${dog.pet_name}` : 'LOST: Unknown')
+    : `FOUND: ${dog.breed || 'Stray Dog'}`
+  const [imgFailed, setImgFailed] = useState(false)
 
-function StrayCard({ dog, onClick }) {
-  const badge = STATUS_BADGES[dog.status]
   return (
-    <div onClick={onClick} style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', marginBottom: 10, cursor: 'pointer', border: dog.injured ? '1.5px solid #ffb0b0' : '1px solid #eee', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        {dog.photo_url
-          ? <img src={dog.photo_url} alt="dog" style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
-          : <div style={{ width: 64, height: 64, borderRadius: 10, background: '#f0f0e8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>🐕</div>
+    <div onClick={onClick} style={{ background: '#fff', borderRadius: 14, marginBottom: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: `1px solid ${LIGHT_GRAY}`, overflow: 'hidden', cursor: 'pointer' }}>
+      {/* Photo area */}
+      <div style={{ height: 96, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', background: isLost ? 'linear-gradient(135deg, #fff3e0, #ffe0b2)' : 'linear-gradient(135deg, #f0e8df, #e8d5c0)' }}>
+        {dog.photo_url && !imgFailed
+          ? <img src={dog.photo_url} alt="dog" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setImgFailed(true)} />
+          : <span style={{ fontSize: 56 }}>{isLost ? '🔍' : '🐕'}</span>
         }
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#1a1a18' }}>{dog.dog_id}</span>
-            <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>{timeAgo(dog.created_at)}</span>
+        <div style={{ position: 'absolute', top: 8, left: 8, background: statusColor, color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8 }}>{statusLabel}</div>
+        <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: 10, padding: '2px 8px', borderRadius: 8 }}>📍 {(dog.area || 'Unknown').split(' ')[0]}</div>
+      </div>
+
+      <div style={{ padding: '10px 12px' }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: '#111' }}>{name}</div>
+        <div style={{ fontSize: 11, color: GRAY, marginTop: 2 }}>{dog.breed} · {dog.color} · {timeAgo(dog.created_at)}</div>
+        {dog.notes && (
+          <div style={{ fontSize: 11, color: '#333', margin: '6px 0', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            {dog.notes}
           </div>
-          <div style={{ fontSize: 13, color: '#444', marginTop: 2 }}>{dog.breed}</div>
-          <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>{dog.color} · {dog.size} · {dog.sex} · {dog.age}</div>
-          <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, background: '#eef6f1', color: '#2d7a4f', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{dog.area}</span>
-            {dog.injured && <span style={{ fontSize: 11, background: '#fff0f0', color: '#c00', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>⚠ Injured</span>}
-            {dog.vaccinated && <span style={{ fontSize: 11, background: '#eef6f1', color: '#2d7a4f', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>💉 Vaccinated</span>}
-            {badge && <span style={{ fontSize: 11, background: badge.bg, color: badge.color, padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{badge.label}</span>}
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+          <div style={{ fontSize: 10, color: GRAY }}>By {dog.reporter_name || 'Anonymous'}</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {dog.injured && <span style={{ fontSize: 10, color: RED, fontWeight: 600 }}>⚠ Injured</span>}
+            {dog.vaccinated && <span style={{ fontSize: 10, color: GREEN, fontWeight: 600 }}>💉 Vaccinated</span>}
+            <div style={{ background: ORANGE, color: 'white', fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 8 }}>
+              {isLost && dog.owner_phone ? '📞 Call' : '👁 View'}
+            </div>
           </div>
         </div>
       </div>
@@ -44,56 +61,32 @@ function StrayCard({ dog, onClick }) {
   )
 }
 
-function LostPetCard({ dog, onClick }) {
-  return (
-    <div onClick={onClick} style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', marginBottom: 10, cursor: 'pointer', border: '1.5px solid #ffe0b2', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        {dog.photo_url
-          ? <img src={dog.photo_url} alt="dog" style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
-          : <div style={{ width: 64, height: 64, borderRadius: 10, background: '#fff3e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>🔍</div>
-        }
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#e65100' }}>{dog.pet_name || 'Unknown name'}</span>
-            <span style={{ fontSize: 11, color: '#aaa', flexShrink: 0 }}>{timeAgo(dog.created_at)}</span>
-          </div>
-          <div style={{ fontSize: 13, color: '#444', marginTop: 2 }}>{dog.breed} · {dog.color} · {dog.size}</div>
-          {dog.date_lost && <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>Lost: {dog.date_lost}</div>}
-          <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, background: '#fff3e0', color: '#e65100', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>🔍 Lost pet</span>
-            <span style={{ fontSize: 11, background: '#eef6f1', color: '#2d7a4f', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{dog.area}</span>
-            {dog.owner_phone && <span style={{ fontSize: 11, background: '#f5f5f0', color: '#555', padding: '2px 8px', borderRadius: 20 }}>📞 {dog.owner_phone}</span>}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+const TABS = [
+  { key: 'all',        label: 'All' },
+  { key: 'lost',       label: 'Lost' },
+  { key: 'stray',      label: 'Stray' },
+  { key: 'vaccinated', label: 'Vaccinated' },
+]
 
 export default function FeedPage() {
   const { nav } = useApp()
-  const [tab, setTab] = useState('strays')           // 'strays' | 'lost_pets'
+  const [filter, setFilter] = useState('all')
   const [dogs, setDogs] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({ color: '', size: '', injured: false, vaccinated: false, status: '' })
   const [search, setSearch] = useState('')
 
   const load = async () => {
     setLoading(true)
-    const f = { report_type: tab === 'strays' ? 'stray' : 'lost_pet' }
-    if (tab === 'strays') {
-      if (filters.color)      f.color = filters.color
-      if (filters.size)       f.size  = filters.size
-      if (filters.injured)    f.injured = true
-      if (filters.vaccinated) f.vaccinated = true
-      if (filters.status)     f.status = filters.status
-    }
+    const f = {}
+    if (filter === 'lost') f.report_type = 'lost_pet'
+    else if (filter === 'stray') f.report_type = 'stray'
+    else if (filter === 'vaccinated') { f.report_type = 'stray'; f.vaccinated = true }
     const { data } = await getDogs(f)
     setDogs(data || [])
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [filters, tab])
+  useEffect(() => { load() }, [filter])
 
   const displayed = dogs.filter(d => {
     if (!search) return true
@@ -106,85 +99,51 @@ export default function FeedPage() {
     )
   })
 
-  const clearFilters = () => setFilters({ color: '', size: '', injured: false, vaccinated: false, status: '' })
-  const hasFilters = filters.color || filters.size || filters.injured || filters.vaccinated || filters.status
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Header */}
-      <div style={{ background: '#fff', padding: '16px 16px 12px', borderBottom: '1px solid #eee', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <h1 style={{ fontSize: 18, fontWeight: 800, color: '#1a1a18', margin: 0 }}>🐕 Dogs</h1>
-          <span style={{ fontSize: 13, color: '#2d7a4f', fontWeight: 600 }}>{displayed.length} results</span>
+      <div style={{ background: `linear-gradient(135deg, ${DARK_ORANGE}, ${ORANGE})`, padding: '14px 16px 12px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🐾</span>
+          <div>
+            <div style={{ color: 'white', fontWeight: 800, fontSize: 15 }}>Lost & Found Feed</div>
+            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 10 }}>All reports · PawTrace India</div>
+          </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div onClick={() => nav('search')} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>🤖 Search by Photo</div>
+            <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: 700 }}>{displayed.length}</span>
+          </div>
         </div>
+      </div>
 
-        {/* Strays / Lost Pets tab toggle */}
-        <div style={{ display: 'flex', background: '#f5f5f0', borderRadius: 10, padding: 3, marginBottom: 10 }}>
-          {[['strays', '🐕 Strays'], ['lost_pets', '🔍 Lost Pets']].map(([key, label]) => (
-            <button key={key} onClick={() => { setTab(key); setSearch('') }}
-              style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: tab === key ? '#fff' : 'transparent', color: tab === key ? '#1a1a18' : '#888', boxShadow: tab === key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s' }}>
-              {label}
-            </button>
-          ))}
-        </div>
-
+      {/* Search + filter bar */}
+      <div style={{ background: '#fff', padding: '10px 14px', borderBottom: `1px solid ${LIGHT_GRAY}`, flexShrink: 0 }}>
         <input
-          placeholder={tab === 'strays' ? 'Search breed, area, ID...' : 'Search name, breed, area...'}
+          placeholder="Search breed, area, name..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e0e0d8', borderRadius: 8, fontSize: 14, outline: 'none', marginBottom: 10, background: '#fafaf8' }}
+          style={{ width: '100%', padding: '8px 12px', border: `1.5px solid ${LIGHT_GRAY}`, borderRadius: 10, fontSize: 13, outline: 'none', background: BG, marginBottom: 10, boxSizing: 'border-box' }}
         />
-
-        {/* Filters — only shown for strays */}
-        {tab === 'strays' && (
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
-            <select value={filters.color} onChange={e => setFilters(f => ({ ...f, color: e.target.value }))}
-              style={{ padding: '6px 10px', borderRadius: 20, border: '1px solid #ddd', fontSize: 12, background: filters.color ? '#eef6f1' : '#fff', color: filters.color ? '#2d7a4f' : '#666', cursor: 'pointer', flexShrink: 0 }}>
-              <option value="">All colours</option>
-              {COLORS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={filters.size} onChange={e => setFilters(f => ({ ...f, size: e.target.value }))}
-              style={{ padding: '6px 10px', borderRadius: 20, border: '1px solid #ddd', fontSize: 12, background: filters.size ? '#eef6f1' : '#fff', color: filters.size ? '#2d7a4f' : '#666', cursor: 'pointer', flexShrink: 0 }}>
-              <option value="">All sizes</option>
-              {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
-              style={{ padding: '6px 10px', borderRadius: 20, border: '1px solid #ddd', fontSize: 12, background: filters.status ? '#e3f2fd' : '#fff', color: filters.status ? '#1565c0' : '#666', cursor: 'pointer', flexShrink: 0 }}>
-              <option value="">All statuses</option>
-              <option value="sighted">Sighted</option>
-              <option value="being_rescued">Being rescued</option>
-              <option value="in_shelter">In shelter</option>
-              <option value="reunited">Reunited</option>
-            </select>
-            <button onClick={() => setFilters(f => ({ ...f, injured: !f.injured }))}
-              style={{ padding: '6px 12px', borderRadius: 20, border: '1px solid #ddd', fontSize: 12, background: filters.injured ? '#fff0f0' : '#fff', color: filters.injured ? '#c00' : '#666', cursor: 'pointer', fontWeight: filters.injured ? 700 : 400, flexShrink: 0 }}>
-              ⚠ Injured only
-            </button>
-            <button onClick={() => setFilters(f => ({ ...f, vaccinated: !f.vaccinated }))}
-              style={{ padding: '6px 12px', borderRadius: 20, border: '1px solid #ddd', fontSize: 12, background: filters.vaccinated ? '#eef6f1' : '#fff', color: filters.vaccinated ? '#2d7a4f' : '#666', cursor: 'pointer', fontWeight: filters.vaccinated ? 700 : 400, flexShrink: 0 }}>
-              💉 Vaccinated only
-            </button>
-            {hasFilters && <button onClick={clearFilters} style={{ padding: '6px 10px', borderRadius: 20, border: '1px solid #ddd', fontSize: 12, background: '#f5f5f0', color: '#888', cursor: 'pointer', flexShrink: 0 }}>✕ Clear</button>}
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+          {TABS.map(({ key, label }) => (
+            <div key={key} onClick={() => setFilter(key)} style={{ padding: '5px 12px', borderRadius: 20, background: filter === key ? ORANGE : LIGHT_GRAY, color: filter === key ? 'white' : GRAY, fontSize: 11, fontWeight: filter === key ? 700 : 400, whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer' }}>
+              {label}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* List */}
-      <div style={{ padding: '12px 14px', overflowY: 'auto' }}>
+      <div style={{ padding: '12px 14px', overflowY: 'auto', background: BG }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#aaa' }}>Loading...</div>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: GRAY }}>Loading...</div>
         ) : displayed.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#aaa' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>{tab === 'strays' ? '🔍' : '🐾'}</div>
-            <div style={{ fontSize: 15 }}>{tab === 'strays' ? 'No strays found' : 'No lost pets reported'}</div>
-            {hasFilters && <button onClick={clearFilters} style={{ marginTop: 12, padding: '8px 16px', background: '#2d7a4f', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Clear filters</button>}
+          <div style={{ textAlign: 'center', padding: '60px 0', color: GRAY }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🐾</div>
+            <div style={{ fontSize: 15 }}>No reports found</div>
           </div>
         ) : (
-          displayed.map(dog =>
-            tab === 'strays'
-              ? <StrayCard key={dog.id} dog={dog} onClick={() => nav('dog', { dogId: dog.id })} />
-              : <LostPetCard key={dog.id} dog={dog} onClick={() => nav('dog', { dogId: dog.id })} />
-          )
+          displayed.map(dog => <PostCard key={dog.id} dog={dog} onClick={() => nav('dog', { dogId: dog.id })} />)
         )}
       </div>
     </div>

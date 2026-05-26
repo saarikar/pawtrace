@@ -101,7 +101,15 @@ export async function addDog(dogData) {
     DEMO_DOGS.unshift(dog)
     return { data: dog, error: null }
   }
-  const { data, error } = await supabase.from('dogs').insert(dogData).select().single()
+  const { data: maxRow } = await supabase
+    .from('dogs').select('dog_id').order('dog_id', { ascending: false }).limit(1).single()
+  let nextNum = 1
+  if (maxRow?.dog_id) {
+    const match = maxRow.dog_id.match(/\d+$/)
+    if (match) nextNum = parseInt(match[0]) + 1
+  }
+  const dog_id = 'SD-' + String(nextNum).padStart(3, '0')
+  const { data, error } = await supabase.from('dogs').insert({ ...dogData, dog_id }).select().single()
   return { data, error }
 }
 

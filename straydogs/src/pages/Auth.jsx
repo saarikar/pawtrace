@@ -3,15 +3,15 @@ import { signIn, signUp, getProfile } from '../lib/data.js'
 import { isDemoMode } from '../lib/supabase.js'
 
 const s = {
-  wrap: { flex: 1, display: 'flex', flexDirection: 'column', padding: '48px 24px 32px', background: '#f4f4f0', minHeight: '100dvh' },
+  wrap: { flex: 1, display: 'flex', flexDirection: 'column', padding: '48px 24px 32px', background: '#FDF8F4', minHeight: '100dvh' },
   logo: { textAlign: 'center', marginBottom: 40 },
   card: { background: '#fff', borderRadius: 14, padding: '24px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
-  label: { fontSize: 12, fontWeight: 600, color: '#666', marginBottom: 5, display: 'block' },
-  input: { width: '100%', padding: '11px 12px', border: '1.5px solid #e0e0d8', borderRadius: 8, fontSize: 15, outline: 'none', marginBottom: 14, background: '#fff', color: '#1a1a18' },
-  btn: { width: '100%', padding: 13, background: '#2d7a4f', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 4 },
-  toggle: { textAlign: 'center', marginTop: 20, fontSize: 14, color: '#666' },
-  link: { color: '#2d7a4f', fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', fontSize: 14 },
-  err: { background: '#fff0f0', border: '1px solid #ffc0c0', borderRadius: 8, padding: '10px 12px', marginBottom: 14, fontSize: 13, color: '#c00' },
+  label: { fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 5, display: 'block' },
+  input: { width: '100%', padding: '11px 12px', border: '1.5px solid #F3F4F6', borderRadius: 8, fontSize: 15, outline: 'none', marginBottom: 14, background: '#fff', color: '#1a1a18' },
+  btn: { width: '100%', padding: 13, background: '#E07B39', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', marginTop: 4 },
+  toggle: { textAlign: 'center', marginTop: 20, fontSize: 14, color: '#6B7280' },
+  link: { color: '#E07B39', fontWeight: 600, cursor: 'pointer', background: 'none', border: 'none', fontSize: 14 },
+  err: { background: '#fff0f0', border: '1px solid #ffc0c0', borderRadius: 8, padding: '10px 12px', marginBottom: 14, fontSize: 13, color: '#DC2626' },
   demo: { background: '#fffbe6', border: '1px solid #f0d060', borderRadius: 8, padding: '10px 12px', marginBottom: 14, fontSize: 13, color: '#7a6000' },
 }
 
@@ -41,9 +41,9 @@ export default function AuthPage({ onAuth }) {
   return (
     <div style={s.wrap}>
       <div style={s.logo}>
-        <div style={{ fontSize: 52, marginBottom: 8 }}>🐕</div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1a1a18', margin: 0 }}>Stray Dogs Directory</h1>
-        <p style={{ fontSize: 14, color: '#777', marginTop: 6 }}>Community-powered stray dog tracking</p>
+        <div style={{ fontSize: 52, marginBottom: 8 }}>🐾</div>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#E07B39', margin: 0 }}>PawTrace India</h1>
+        <p style={{ fontSize: 14, color: '#6B7280', marginTop: 6 }}>AI-Powered Dog Finder</p>
       </div>
 
       <div style={s.card}>
@@ -81,7 +81,7 @@ export default function AuthPage({ onAuth }) {
         </button>
 
         {mode === 'signin' && (
-          <button style={{ ...s.btn, background: '#f4f4f0', color: '#444', marginTop: 10 }} onClick={() => onAuth({ id: 'demo', email: 'demo@test.com' }, { id: 'demo', name: 'Demo User', city: 'Chennai', email: 'demo@test.com' })}>
+          <button style={{ ...s.btn, background: '#F3F4F6', color: '#444', marginTop: 10 }} onClick={() => onAuth({ id: 'demo', email: 'demo@test.com' }, { id: 'demo', name: 'Demo User', city: 'Chennai', email: 'demo@test.com' })}>
             Continue as demo
           </button>
         )}

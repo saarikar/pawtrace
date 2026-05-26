@@ -2,11 +2,13 @@ import { useState, useEffect, createContext, useContext } from 'react'
 import { getSession, getProfile, signOut } from './lib/data.js'
 import { isDemoMode } from './lib/supabase.js'
 import AuthPage from './pages/Auth.jsx'
+import HomePage from './pages/Home.jsx'
 import FeedPage from './pages/Feed.jsx'
 import ReportPage from './pages/Report.jsx'
 import DogPage from './pages/Dog.jsx'
 import ProfilePage from './pages/Profile.jsx'
 import StatsPage from './pages/Stats.jsx'
+import SearchPage from './pages/Search.jsx'
 
 // ── Global auth context ──────────────────────────────────────────────────
 const Ctx = createContext(null)
@@ -14,25 +16,27 @@ export const useApp = () => useContext(Ctx)
 
 // ── Bottom nav ───────────────────────────────────────────────────────────
 const NAV = [
-  { id: 'feed',   label: 'Dogs',    icon: '🐕' },
-  { id: 'report', label: 'Report',  icon: '📸' },
-  { id: 'stats',  label: 'Stats',   icon: '📊' },
-  { id: 'profile',label: 'Profile', icon: '👤' },
+  { id: 'home',    label: 'Home',   icon: '🏠' },
+  { id: 'feed',    label: 'Search', icon: '🔍' },
+  { id: 'report',  label: 'Report', icon: '📷' },
+  { id: 'stats',   label: 'Stats',  icon: '📊' },
+  { id: 'profile', label: 'Me',     icon: '👤' },
 ]
 
 function BottomNav({ page, nav }) {
   return (
-    <nav style={{ display: 'flex', borderTop: '1px solid #e5e5e0', background: '#fff', position: 'sticky', bottom: 0, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <nav style={{ display: 'flex', borderTop: '2px solid #F3F4F6', background: '#fff', position: 'sticky', bottom: 0, zIndex: 50, paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {NAV.map(t => (
         <button key={t.id} onClick={() => nav(t.id)} style={{
           flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
           padding: '10px 0 12px', gap: 3, fontSize: 10, fontWeight: 600,
           border: 'none', background: 'none', cursor: 'pointer',
-          color: page === t.id ? '#2d7a4f' : '#999',
+          color: page === t.id ? '#E07B39' : '#999',
           transition: 'color 0.15s'
         }}>
           <span style={{ fontSize: 20 }}>{t.icon}</span>
           {t.label}
+          {page === t.id && <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#E07B39' }} />}
         </button>
       ))}
     </nav>
@@ -42,7 +46,7 @@ function BottomNav({ page, nav }) {
 export default function App() {
   const [user, setUser]     = useState(null)
   const [profile, setProfile] = useState(null)
-  const [page, setPage]     = useState('feed')
+  const [page, setPage]     = useState('home')
   const [pageParams, setParams] = useState({})
   const [loading, setLoading] = useState(true)
 
@@ -58,7 +62,7 @@ export default function App() {
 
   const handleSignOut = async () => {
     await signOut()
-    setUser(null); setProfile(null); setPage('feed')
+    setUser(null); setProfile(null); setPage('home')
   }
 
   const refreshProfile = async () => {
@@ -80,12 +84,14 @@ export default function App() {
   const noNav = page === 'auth' || page === 'dog'
 
   const PageComponent = {
+    home:    <HomePage />,
     feed:    <FeedPage />,
     report:  <ReportPage />,
     stats:   <StatsPage />,
     profile: user ? <ProfilePage onSignOut={handleSignOut} /> : <AuthPage onAuth={(u, p) => { setUser(u); setProfile(p) }} />,
     dog:     <DogPage dogId={pageParams.dogId} />,
-  }[page] || <FeedPage />
+    search:  <SearchPage />,
+  }[page] || <HomePage />
 
   return (
     <Ctx.Provider value={ctx}>

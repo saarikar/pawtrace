@@ -98,6 +98,32 @@ export async function analyzeImageBatch(photos) {
   }
 }
 
+// Search database by photo(s) — returns ranked matches
+export async function searchDogs(photos, filters = {}, location = {}) {
+  try {
+    const res = await fetch(FLASK + '/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        images: photos.map(p => p.b64),
+        mime: 'image/jpeg',
+        top_n: 10,
+        ...filters,
+        lat: location.lat || null,
+        lng: location.lng || null,
+      }),
+      signal: AbortSignal.timeout(120000),
+    })
+    const data = await res.json()
+    if (!res.ok) return { error: data.detail || data.error || `Server error (${res.status})` }
+    if (data.error) return { error: data.error }
+    return data
+  } catch (e) {
+    if (e.name === 'TimeoutError') return { error: 'Search timed out. Is the backend running?' }
+    return { error: 'Cannot reach backend. Run: python app.py' }
+  }
+}
+
 // Save feature vector for a confirmed new dog
 export async function saveFeature(dogId, feature) {
   try {

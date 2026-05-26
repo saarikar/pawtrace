@@ -23,6 +23,7 @@ import tensorflow as tf
 import json
 import os
 import base64
+import math
 from collections import Counter
 from ultralytics import YOLO
 from sklearn.metrics.pairwise import cosine_similarity
@@ -88,6 +89,18 @@ class SaveRequest(BaseModel):
 class BatchAnalyseRequest(BaseModel):
     images: list[str]
     mime: str = "image/jpeg"
+
+class SearchRequest(BaseModel):
+    images: list[str]
+    mime: str = "image/jpeg"
+    top_n: int = 10
+    breed: str | None = None
+    color: str | None = None
+    size: str | None = None
+    report_type: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    radius_km: float = 10.0
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -218,6 +231,59 @@ def predict_size(x1, y1, x2, y2, img_h, img_w):
 
 def get_body_structure(breed):
     return BODY_STRUCTURES.get(breed, "Medium build")
+
+
+def haversine(lat1, lng1, lat2, lng2):
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng / 2) ** 2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def rank_matches(query_feature, candidates, lat, lng, top_n, detected_breed=None, detected_color=None, radius_km=10.0):
+    results = []
+    for dog in candidates:
+        distance_km = None
+        # Radius filter — skip dogs with known location outside the radius
+        if lat and lng and dog.get("lat") and dog.get("lng"):
+            distance_km = haversine(lat, lng, dog["lat"], dog["lng"])
+            if distance_km > radius_km:
+                continue
+
+        fv = dog.get("feature_vector")
+        if fv:
+            stored = normalize(np.array(fv, dtype=np.float64))
+            sim = float(cosine_similarity([query_feature], [stored])[0][0])
+            match_type = "visual"
+        else:
+            sim = 0.0
+            if detected_breed and dog.get("breed") == detected_breed:
+                sim += 0.5
+            if detected_color and dog.get("color") == detected_color:
+                sim += 0.3
+            match_type = "attribute"
+
+        if sim <= 0:
+            continue
+
+        score = sim
+        if distance_km is not None:
+            proximity = max(0.0, 1 - distance_km / radius_km)
+            score = 0.7 * sim + 0.3 * proximity
+
+        dog_out = {k: v for k, v in dog.items() if k != "feature_vector"}
+        results.append({
+            **dog_out,
+            "similarity": round(sim * 100),
+            "match_type": match_type,
+            "distance_km": round(distance_km, 1) if distance_km is not None else None,
+            "_score": score,
+        })
+    results.sort(key=lambda x: x["_score"], reverse=True)
+    for r in results:
+        r.pop("_score")
+    return results[:top_n]
 
 
 # ── Routes ──────────────────────────────────────────────────────────────────
@@ -456,6 +522,64 @@ def analyse_batch(body: BatchAnalyseRequest):
         "photos_submitted": len(body.images),
         "photos_analyzed":  len(dog_results),
         "per_photo":        [{k: v for k, v in p.items() if k != "feature"} for p in per_photo],
+    }
+
+
+@app.post("/search")
+def search(body: SearchRequest):
+    """Search the dog database by photo(s). Returns top-N ranked matches with similarity scores."""
+    dog_features = []
+    detected_breeds = []
+    detected_colors = []
+
+    for b64 in body.images:
+        try:
+            img = decode_image(b64)
+        except Exception:
+            continue
+        results = yolo(img)
+        boxes = []
+        for result in results:
+            for box in result.boxes:
+                if int(box.cls[0]) == 16:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    boxes.append((x1, y1, x2, y2, float(box.conf[0])))
+        if not boxes:
+            continue
+        boxes.sort(key=lambda b: b[4], reverse=True)
+        x1, y1, x2, y2, _ = boxes[0]
+        crop = img[y1:y2, x1:x2]
+        if crop.size == 0:
+            continue
+        dog_features.append(extract_features(crop))
+        detected_breeds.append(predict_breed(crop)[0])
+        detected_colors.append(predict_color(crop))
+
+    if not dog_features:
+        return {"matches": [], "message": "No dog detected in query photos.", "photos_processed": 0, "candidates_checked": 0}
+
+    avg_feature = normalize(np.array(dog_features).mean(axis=0))
+    detected_breed = Counter(detected_breeds).most_common(1)[0][0] if detected_breeds else None
+    detected_color = Counter(detected_colors).most_common(1)[0][0] if detected_colors else None
+
+    try:
+        q = supabase_client.table("dogs").select("*")
+        if body.breed:       q = q.eq("breed", body.breed)
+        if body.color:       q = q.eq("color", body.color)
+        if body.size:        q = q.eq("size", body.size)
+        if body.report_type: q = q.eq("report_type", body.report_type)
+        response = q.execute()
+        candidates = response.data or []
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {str(e)}")
+
+    ranked = rank_matches(avg_feature, candidates, body.lat, body.lng, body.top_n, detected_breed, detected_color, body.radius_km)
+    return {
+        "matches": ranked,
+        "photos_processed": len(dog_features),
+        "candidates_checked": len(candidates),
+        "detected_breed": detected_breed,
+        "detected_color": detected_color,
     }
 
 
