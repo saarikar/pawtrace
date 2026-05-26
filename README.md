@@ -29,19 +29,32 @@ A community-driven stray dog directory for Indian cities. Spot, report, and trac
 
 - **Python 3.10+**
 - **Node.js 18+**
-- A [Supabase](https://supabase.com) project (free tier is fine)
 - `stray_dog_model.h5` — included in the repo under `straydogs-backend/`
 
 ---
 
-## 1. Supabase Setup
+## Quick Start (for reviewers)
+
+The Supabase database is already set up and running. You just need two small config files with the keys — **contact the contributor to get these**.
+
+Once you have them:
+
+1. Place `straydogs-backend/.env` in the `straydogs-backend/` folder
+2. Place `straydogs/.env.local` in the `straydogs/` folder
+3. Follow **Backend Setup** and **Frontend Setup** below
+
+You do not need to create a Supabase account or run any SQL.
+
+---
+
+## 1. Supabase Setup (skip if reviewing — see Quick Start above)
 
 1. Create a new project at [supabase.com](https://supabase.com).
 2. Open the **SQL editor** and run the contents of `straydogs/supabase/schema.sql`. This creates the `profiles` and `dogs` tables, RLS policies, triggers, and seed data.
 3. In **Project Settings → API**, note your:
    - Project URL (`https://xxxx.supabase.co`)
-   - `anon` public key
-   - `service_role` secret key (backend only — keep private)
+   - `anon` public key — goes in `straydogs/.env.local` as `VITE_SUPABASE_ANON_KEY`
+   - `service_role` secret key — goes in `straydogs-backend/.env` as `SUPABASE_SERVICE_KEY` (never commit this)
 4. In **Storage**, create a public bucket named `dog-photos`.
 
 ---
