@@ -1,0 +1,25 @@
+services:
+  pawtrace-backend:
+    build: ./pawtrace-backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./pawtrace-backend/.env
+    environment:
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/status')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  pawtrace-web:
+    build: ./pawtrace-web
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_BACKEND_URL=http://pawtrace-backend:5000
+    depends_on:
+      pawtrace-backend:
+        condition: service_healthy

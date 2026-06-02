@@ -1,0 +1,25 @@
+{
+  "appName": "PawTrace India",
+  "subtitle": "AI Dog Finder & Tracker",
+  "category": "Lifestyle",
+  "keywords": "stray dog, lost pet, dog finder, animal rescue, AI, dog breed, India, Chennai, pet tracker",
+  "shortDescription": "AI-powered app to identify, track, and help stray dogs across Indian cities.",
+  "fullDescription": "PawTrace India uses cutting-edge AI to create digital passports for stray dogs, help reunite lost pets with their owners, and support animal rescue efforts.\n\nKey Features:\n- AI Dog Scanning: Take a photo and instantly identify breed, color, size, and distinguishing marks using YOLO and MobileNet computer vision\n- Visual Search: Upload a photo of a lost pet and find matching dogs in the database using feature-based similarity matching\n- Dog Passports: Every scanned dog gets a unique digital passport with QR code, photo gallery, and health records\n- Community Reports: Report stray, injured, or lost dogs with GPS tagging so rescuers can find them\n- Real-time Dashboard: Track community statistics — dogs spotted, rescued, and reunited\n- Multi-city Support: Available across Chennai, Bengaluru, Mumbai, Delhi, Hyderabad, Kolkata, Pune, and Ahmedabad\n\nBuilt with love for India's street dogs.",
+  "privacyPolicyUrl": "https://pawtrace.in/privacy",
+  "supportUrl": "https://pawtrace.in/support",
+  "ageRating": "4+",
+  "screenshots": {
+    "required": [
+      "home-screen.png",
+      "scan-result.png",
+      "dog-passport.png",
+      "search-results.png",
+      "report-flow.png"
+    ],
+    "sizes": {
+      "iphone6_5": "1284x2778",
+      "iphone5_5": "1242x2208",
+      "ipad12_9": "2048x2732"
+    }
+  }
+}

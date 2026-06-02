@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "PawTrace India",
+    "slug": "pawtrace-mobile",
+    "version": "1.0.0",
+    "description": "AI-powered stray dog identification and tracking app for Indian cities. Scan, report, and help reunite lost pets using computer vision.",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "pawtrace",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pawtrace.india",
+      "infoPlist": {
+        "NSCameraUsageDescription": "PawTrace needs camera access to photograph and identify stray dogs",
+        "NSPhotoLibraryUsageDescription": "PawTrace needs photo library access to upload dog photos",
+        "NSLocationWhenInUseUsageDescription": "PawTrace needs your location to tag where dogs are spotted"
+      }
+    },
+    "android": {
+      "package": "com.pawtrace.india",
+      "adaptiveIcon": {
+        "backgroundColor": "#E8453C",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "supabaseUrl": "https://heoaqqsntinqufrdlrqu.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhlb2FxcXNudGlucXVmcmRscnF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NTY0MDIsImV4cCI6MjA5NDMzMjQwMn0._BA1SGUeyZCw5sb4wZMffJ83ZMCdHZo8jp9HY9lJqcY",
+      "backendUrl": "http://localhost:5001"
+    },
+    "plugins": [
+      "expo-sharing",
+      "expo-image-picker",
+      "expo-location",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#E8453C"
+        }
+      ]
+    ]
+  }
+}

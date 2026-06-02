@@ -1,2 +1,35 @@
+# Claude
 CLAUDE.md
 .claude/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+API keys/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Node
+node_modules/
+
+# Build outputs
+dist/
+build/
+.expo/
+
+# Root-level model weight duplicate (canonical copy is in straydogs-backend/)
+/yolov8n.pt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store

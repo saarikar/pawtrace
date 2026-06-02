@@ -1,6 +1,6 @@
 # PawTrace India
 
-A community-driven stray dog directory for Indian cities. Spot, report, and track stray dogs using AI-assisted breed identification and similarity matching.
+A community-driven platform for Indian cities to spot, report, and track stray and lost dogs using AI-assisted breed identification and visual similarity matching.
 
 ## Features
 
@@ -17,19 +17,20 @@ A community-driven stray dog directory for Indian cities. Spot, report, and trac
 
 | Layer | Tech |
 |---|---|
-| Frontend | React 18 + Vite, port 3002 |
-| Backend | FastAPI + Uvicorn, port 5000 |
+| Frontend | React 18 + Vite + React Router |
+| Backend | FastAPI + Uvicorn |
+| Mobile | React Native + Expo (SDK 56) |
 | Database | Supabase (Postgres + Storage + Auth) |
 | ML — detection | YOLOv8n (COCO class 16 — dog) |
 | ML — classification | MobileNetV2 fine-tuned on 12 Indian breeds |
 | ML — dedup | Dense(128) feature extractor + cosine similarity (threshold 0.85) |
-| AI vision (optional) | Anthropic Claude (falls back to mock if key absent) |
+| AI vision (optional) | Ollama Vision LLM (llava:7b) with YOLO fallback |
 
 ## Prerequisites
 
 - **Python 3.10+**
 - **Node.js 18+**
-- `stray_dog_model.h5` — included in the repo under `straydogs-backend/`
+- `stray_dog_model.h5` — included in the repo under `pawtrace-backend/`
 
 ---
 
@@ -39,8 +40,8 @@ The Supabase database is already set up and running. You just need two small con
 
 Once you have them:
 
-1. Place `straydogs-backend/.env` in the `straydogs-backend/` folder
-2. Place `straydogs/.env.local` in the `straydogs/` folder
+1. Place `.env` in the `pawtrace-backend/` folder
+2. Place `.env.local` in the `pawtrace-web/` folder
 3. Follow **Backend Setup** and **Frontend Setup** below
 
 You do not need to create a Supabase account or run any SQL.
@@ -50,11 +51,11 @@ You do not need to create a Supabase account or run any SQL.
 ## 1. Supabase Setup (skip if reviewing — see Quick Start above)
 
 1. Create a new project at [supabase.com](https://supabase.com).
-2. Open the **SQL editor** and run the contents of `straydogs/supabase/schema.sql`. This creates the `profiles` and `dogs` tables, RLS policies, triggers, and seed data.
+2. Open the **SQL editor** and run the contents of `pawtrace-web/supabase/schema.sql`. This creates the `profiles` and `dogs` tables, RLS policies, triggers, and seed data.
 3. In **Project Settings → API**, note your:
    - Project URL (`https://xxxx.supabase.co`)
-   - `anon` public key — goes in `straydogs/.env.local` as `VITE_SUPABASE_ANON_KEY`
-   - `service_role` secret key — goes in `straydogs-backend/.env` as `SUPABASE_SERVICE_KEY` (never commit this)
+   - `anon` public key — goes in `pawtrace-web/.env.local` as `VITE_SUPABASE_ANON_KEY`
+   - `service_role` secret key — goes in `pawtrace-backend/.env` as `SUPABASE_SERVICE_KEY` (never commit this)
 4. In **Storage**, create a public bucket named `dog-photos`.
 
 ---
@@ -62,7 +63,7 @@ You do not need to create a Supabase account or run any SQL.
 ## 2. Backend Setup
 
 ```bash
-cd straydogs-backend
+cd pawtrace-backend
 ```
 
 ### Environment variables
@@ -107,7 +108,7 @@ Interactive docs: `http://localhost:5000/docs`
 Open a **new terminal**:
 
 ```bash
-cd straydogs
+cd pawtrace-web
 ```
 
 ### Environment variables
@@ -121,9 +122,6 @@ Edit `.env.local`:
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
-
-# Optional — leave blank to use mock AI responses
-VITE_ANTHROPIC_API_KEY=sk-ant-your-key
 ```
 
 ### Install dependencies
@@ -138,40 +136,53 @@ npm install
 npm run dev
 ```
 
-App runs at `http://localhost:3002`.
+---
+
+## 4. Docker (optional)
+
+```bash
+docker compose up --build
+```
+
+This starts both the backend (port 5000) and frontend (port 5173).
 
 ---
 
 ## Project Structure
 
 ```
-straydogs_main/
-├── straydogs/                  # React frontend
+pawtrace/
+├── pawtrace-web/               # React frontend (Vite)
 │   ├── src/
-│   │   ├── App.jsx             # State-machine router (no React Router)
+│   │   ├── App.jsx             # React Router layout + auth context
 │   │   ├── lib/
+│   │   │   ├── constants.js    # Shared brand colours + enums
+│   │   │   ├── utils.js        # Shared utilities (timeAgo, etc.)
 │   │   │   ├── data.js         # Supabase queries
 │   │   │   ├── supabase.js     # Supabase client
-│   │   │   └── vision.js       # Anthropic / mock AI calls
-│   │   └── pages/
-│   │       ├── Home.jsx        # Landing page
-│   │       ├── Feed.jsx        # Browse & filter dog sightings
-│   │       ├── Search.jsx      # Visual similarity search
-│   │       ├── Report.jsx      # Report a dog (camera + form)
-│   │       ├── Dog.jsx         # Individual dog detail
-│   │       ├── Stats.jsx       # City statistics
-│   │       ├── Profile.jsx     # User profile
-│   │       └── Auth.jsx        # Sign in / sign up
+│   │   │   └── vision.js       # Backend ML API calls
+│   │   └── pages/              # Route pages (Home, Feed, Search, Report, Dog, Stats, Profile, Auth)
 │   ├── supabase/schema.sql     # Database schema (run once)
 │   └── .env.example
 │
-├── straydogs-backend/          # FastAPI backend
-│   ├── app.py                  # All routes + ML pipeline
+├── pawtrace-backend/           # FastAPI backend
+│   ├── app.py                  # Route handlers
+│   ├── config.py               # Constants + env vars
+│   ├── schemas.py              # Pydantic request models
+│   ├── ml.py                   # ML pipeline (YOLO, breed, features, matching)
+│   ├── db.py                   # Supabase query helpers
 │   ├── class_labels.json       # 12 breed label map
-│   ├── requirements.txt
-│   └── .env                    # SUPABASE_URL + SUPABASE_SERVICE_KEY (not in repo)
+│   └── requirements.txt
 │
-└── yolov8n.pt                  # YOLO weights (auto-downloaded if missing)
+├── pawtrace-mobile/            # React Native + Expo app
+│   ├── src/
+│   │   ├── screens/            # App screens
+│   │   ├── components/         # Reusable UI components
+│   │   ├── lib/                # Shared utilities + API layer
+│   │   └── context/            # App context (auth, profile)
+│   └── app.json
+│
+└── docker-compose.yml
 ```
 
 ---
@@ -183,17 +194,19 @@ straydogs_main/
 | `GET` | `/status` | Health check + model info |
 | `POST` | `/analyse` | Run YOLO + MobileNetV2 on a base64 image |
 | `POST` | `/analyse-batch` | Analyse multiple images |
-| `POST` | `/save` | Save a dog record + feature vector to Supabase |
-| `GET` | `/db` | Fetch all dogs from Supabase |
-| `POST` | `/search` | Visual + attribute search with geo-ranking (haversine, 70% similarity + 30% proximity) |
+| `POST` | `/save` | Save a feature vector to Supabase |
+| `GET` | `/db` | List dogs with stored feature vectors |
+| `POST` | `/search` | Visual + attribute search with geo-ranking |
+| `GET` | `/vision-status` | Check Ollama Vision LLM availability |
+| `POST` | `/analyse-vision` | Ollama Vision analysis (falls back to YOLO) |
+| `POST` | `/analyse-vision-batch` | Batch vision analysis |
 
 ---
 
 ## Notes
 
-- **No CSS files** — all styles are inline JS objects (`style={{}}`).
-- **No React Router** — page state is managed via `useState` in `App.jsx`. Navigate by calling `setPage('pagename')`.
-- The backend must be running before the frontend if you want AI breed analysis. The frontend degrades gracefully (mock responses) if the backend is unreachable and no Anthropic key is set.
+- **No CSS files** — all styles are inline JS objects.
+- The backend must be running for AI breed analysis. The frontend degrades gracefully if the backend is unreachable.
 - If port 5000 is occupied on Windows:
   ```powershell
   $p = (Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue).OwningProcess
