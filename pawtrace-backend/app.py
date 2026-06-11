@@ -305,7 +305,7 @@ async def call_ollama_vision(b64_image: str) -> dict:
         "stream": False,
         "options": {"temperature": 0.2, "num_predict": 1024},
     }
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=240.0) as client:
         resp = await client.post(f"{OLLAMA_URL}/api/generate", json=payload)
         resp.raise_for_status()
         data = resp.json()

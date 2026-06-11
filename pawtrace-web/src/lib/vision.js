@@ -2,6 +2,7 @@
 // Backend URL configured via VITE_BACKEND_URL env var (defaults to localhost for dev)
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:5001'
+const API_KEY = import.meta.env.VITE_BACKEND_API_KEY || ''
 
 export const BREEDS = [
   'Indian Pariah Dog', 'Indian Spitz mix', 'Labrador mix',
@@ -166,9 +167,9 @@ export async function analyzeVision(base64, mime = 'image/jpeg') {
   try {
     const res = await fetch(BACKEND_URL + '/analyse-vision', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
       body: JSON.stringify({ image: base64, mime }),
-      signal: AbortSignal.timeout(120000),
+      signal: AbortSignal.timeout(240000),
     })
     const data = await res.json()
     if (data.error) return { error: data.error, _source: data._source || 'error' }
@@ -185,9 +186,9 @@ export async function analyzeVisionBatch(photos) {
   try {
     const res = await fetch(BACKEND_URL + '/analyse-vision-batch', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
       body: JSON.stringify({ images: photos.map(p => p.b64), mime: 'image/jpeg' }),
-      signal: AbortSignal.timeout(180000),
+      signal: AbortSignal.timeout(300000),
     })
     const data = await res.json()
     if (data.error) return { error: data.error, _source: data._source || 'error' }
