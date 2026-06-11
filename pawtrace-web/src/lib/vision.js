@@ -149,6 +149,55 @@ export function getLocation() {
   })
 }
 
+// ── Ollama Vision LLM (primary — richer analysis) ─────────────────────
+
+// Check whether Ollama is reachable and the vision model is loaded
+export async function checkVisionStatus() {
+  try {
+    const res = await fetch(BACKEND_URL + '/vision-status', { signal: AbortSignal.timeout(3000) })
+    return await res.json()
+  } catch {
+    return { online: false }
+  }
+}
+
+// Single-image Ollama analysis — returns breed, health, marks, temperament, etc.
+export async function analyzeVision(base64, mime = 'image/jpeg') {
+  try {
+    const res = await fetch(BACKEND_URL + '/analyse-vision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64, mime }),
+      signal: AbortSignal.timeout(120000),
+    })
+    const data = await res.json()
+    if (data.error) return { error: data.error, _source: data._source || 'error' }
+    if (!data.is_dog) return { is_dog: false, message: data.message || 'No dog detected', _source: data._source }
+    return { ...data, is_dog: true }
+  } catch (e) {
+    if (e.name === 'TimeoutError') return { error: 'Analysis timed out (vision model may be loading)', _source: 'timeout' }
+    return { error: 'Cannot reach backend. Run: python app.py', _source: 'offline' }
+  }
+}
+
+// Multi-photo Ollama analysis — Ollama runs on first image, features averaged across all
+export async function analyzeVisionBatch(photos) {
+  try {
+    const res = await fetch(BACKEND_URL + '/analyse-vision-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ images: photos.map(p => p.b64), mime: 'image/jpeg' }),
+      signal: AbortSignal.timeout(180000),
+    })
+    const data = await res.json()
+    if (data.error) return { error: data.error, _source: data._source || 'error' }
+    return data
+  } catch (e) {
+    if (e.name === 'TimeoutError') return { error: 'Analysis timed out. Vision model may still be loading.', _source: 'timeout' }
+    return { error: 'Cannot reach backend. Run: python app.py', _source: 'offline' }
+  }
+}
+
 // Reverse geocode — free, no key needed
 export async function reverseGeocode(lat, lng) {
   try {

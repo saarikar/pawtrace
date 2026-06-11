@@ -103,6 +103,50 @@ Interactive docs: `http://localhost:5000/docs`
 
 ---
 
+## 2a. Ollama Vision Setup (Optional but Recommended)
+
+The backend uses [Ollama](https://ollama.com) to run the `llava:7b` vision model locally. This provides richer dog analysis — breed mix estimates, health observations, distinguishing marks, and temperament guesses. If Ollama is unavailable the backend automatically falls back to YOLO+MobileNetV2.
+
+### What you need
+
+- ~4 GB disk space for the model
+- ~8 GB RAM (or a GPU with ≥8 GB VRAM for faster inference)
+
+### Non-Docker setup
+
+1. Download and install Ollama from [ollama.com](https://ollama.com)
+2. Pull the vision model (one-time, ~4 GB download):
+   ```bash
+   ollama pull llava:7b
+   ```
+3. Ollama runs as a background service on `http://localhost:11434` — the backend will find it automatically.
+
+### Docker Compose setup
+
+The included `docker-compose.yml` now starts Ollama as a container alongside the backend:
+
+```bash
+docker compose up
+```
+
+On first run, Ollama will download `llava:7b` automatically. Subsequent starts use the cached model stored in the `ollama_data` volume.
+
+To pre-pull inside the container after the first `up`:
+```bash
+docker compose exec ollama ollama pull llava:7b
+```
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `OLLAMA_URL` | `http://127.0.0.1:11434` | URL of the running Ollama instance |
+| `OLLAMA_VISION_MODEL` | `llava:7b` | Vision model to use |
+
+Set these in `pawtrace-backend/.env` to override for non-standard setups.
+
+---
+
 ## 3. Frontend Setup
 
 Open a **new terminal**:

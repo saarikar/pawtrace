@@ -1,4 +1,12 @@
 services:
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
   pawtrace-backend:
     build: ./pawtrace-backend
     ports:
@@ -7,12 +15,16 @@ services:
       - ./pawtrace-backend/.env
     environment:
       - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      - OLLAMA_URL=http://ollama:11434
     restart: unless-stopped
+    depends_on:
+      - ollama
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/status')"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 90s
 
   pawtrace-web:
     build: ./pawtrace-web
@@ -23,3 +35,6 @@ services:
     depends_on:
       pawtrace-backend:
         condition: service_healthy
+
+volumes:
+  ollama_data:

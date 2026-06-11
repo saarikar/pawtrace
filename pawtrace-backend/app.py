@@ -313,10 +313,12 @@ async def call_ollama_vision(b64_image: str) -> dict:
     raw_response = data.get("response", "")
     json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
     if not json_match:
+        log.warning("Ollama returned no parseable JSON. Raw (first 500 chars): %.500s", raw_response)
         return {"is_dog": False, "error": "Could not parse vision model response", "raw": raw_response}
     try:
         return json.loads(json_match.group())
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
+        log.warning("Ollama JSON decode failed: %s. Raw (first 500 chars): %.500s", exc, raw_response)
         return {"is_dog": False, "error": "Invalid JSON from vision model", "raw": raw_response}
 
 
@@ -405,7 +407,7 @@ async def vision_status(request: Request):
 
 @app.post("/analyse-vision")
 @limiter.limit("5/minute")
-async def analyse_vision(request: Request, body: VisionRequest):
+async def analyse_vision(request: Request, body: VisionRequest, _=Depends(verify_api_key)):
     try:
         result = await call_ollama_vision(body.image)
         if result.get("is_dog"):
@@ -420,7 +422,7 @@ async def analyse_vision(request: Request, body: VisionRequest):
 
 @app.post("/analyse-vision-batch")
 @limiter.limit("3/minute")
-async def analyse_vision_batch(request: Request, body: VisionBatchRequest):
+async def analyse_vision_batch(request: Request, body: VisionBatchRequest, _=Depends(verify_api_key)):
     if not body.images:
         return {"is_dog": False, "message": "No images provided."}
 
