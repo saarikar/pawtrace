@@ -61,9 +61,9 @@ BODY_STRUCTURES = {
     "dalmatian_mix":       "Athletic, spotted build",
 }
 
-# ── Ollama Vision LLM ────────────────────────────────────────────────────
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_VISION_MODEL", "llava:7b")
+# ── Gemini Vision LLM ────────────────────────────────────────────────────
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
 VISION_PROMPT = """You are a professional veterinary AI assistant analyzing a photo of a dog found on the streets of India.
 

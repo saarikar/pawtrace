@@ -150,9 +150,9 @@ export function getLocation() {
   })
 }
 
-// ── Ollama Vision LLM (primary — richer analysis) ─────────────────────
+// ── Gemini Vision LLM (primary — richer analysis) ─────────────────────
 
-// Check whether Ollama is reachable and the vision model is loaded
+// Check whether Gemini is reachable and the vision model is loaded
 export async function checkVisionStatus() {
   try {
     const res = await fetch(BACKEND_URL + '/vision-status', { signal: AbortSignal.timeout(3000) })
@@ -162,7 +162,7 @@ export async function checkVisionStatus() {
   }
 }
 
-// Single-image Ollama analysis — returns breed, health, marks, temperament, etc.
+// Single-image Gemini analysis — returns breed, health, marks, temperament, etc.
 export async function analyzeVision(base64, mime = 'image/jpeg') {
   try {
     const res = await fetch(BACKEND_URL + '/analyse-vision', {
@@ -172,6 +172,7 @@ export async function analyzeVision(base64, mime = 'image/jpeg') {
       signal: AbortSignal.timeout(240000),
     })
     const data = await res.json()
+    if (!res.ok) return { error: data.detail || data.error || `Backend error (${res.status})`, _source: 'backend_error' }
     if (data.error) return { error: data.error, _source: data._source || 'error' }
     if (!data.is_dog) return { is_dog: false, message: data.message || 'No dog detected', _source: data._source }
     return { ...data, is_dog: true }
@@ -181,7 +182,7 @@ export async function analyzeVision(base64, mime = 'image/jpeg') {
   }
 }
 
-// Multi-photo Ollama analysis — Ollama runs on first image, features averaged across all
+// Multi-photo Gemini analysis — Gemini runs on first image, features averaged across all
 export async function analyzeVisionBatch(photos) {
   try {
     const res = await fetch(BACKEND_URL + '/analyse-vision-batch', {

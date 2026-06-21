@@ -33,3 +33,15 @@ build/
 *.swp
 *.swo
 .DS_Store
+
+# Logs
+*.log
+
+# Test files
+test_dog.jpg
+strip_coauthor.py
+
+# Local folders not tracked
+straydogs-backend/
+dog_database/
+pawtrace-web/.vite/

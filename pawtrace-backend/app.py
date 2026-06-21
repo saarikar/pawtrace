@@ -14,12 +14,15 @@ Runs on http://localhost:5000
 Docs at  http://localhost:5000/docs
 """
 
+import asyncio
+import base64
 import json
 import logging
 import os
 import re
 
-import httpx
+from google import genai
+from google.genai import types
 import numpy as np
 import tensorflow as tf
 from collections import Counter
@@ -35,7 +38,7 @@ from ultralytics import YOLO
 
 from config import (
     CORS_ORIGINS, API_KEY, MODEL_PATH, LABELS_PATH, YOLO_PATH, THRESHOLD,
-    OLLAMA_URL, OLLAMA_MODEL, VISION_PROMPT,
+    GEMINI_API_KEY, GEMINI_MODEL, VISION_PROMPT,
 )
 from schemas import (
     AnalyseRequest, SaveRequest, BatchAnalyseRequest, SearchRequest,
@@ -99,8 +102,11 @@ log.info("Models loaded. Ready.")
 
 def _extract_from_image(b64_str):
     """Run full detection+classification on a single image. Returns dict or None."""
+    import time
+    t0 = time.perf_counter()
     pipeline = detect_and_crop(b64_str, yolo)
     if not pipeline.get("is_dog"):
+        log.info("YOLO+MobileNetV2 latency: %.0fms | no dog detected", (time.perf_counter() - t0) * 1000)
         return None
 
     crop = pipeline["crop"]
@@ -112,6 +118,8 @@ def _extract_from_image(b64_str):
     feature = extract_features(crop, feature_model)
     color = predict_color(crop)
     size = predict_size(x1, y1, x2, y2, img_h, img_w)
+    log.info("YOLO+MobileNetV2 latency: %.0fms | breed=%s | breed_confidence=%s | yolo_confidence=%s",
+             (time.perf_counter() - t0) * 1000, breed, round(breed_conf * 100), pipeline["yolo_confidence"])
 
     return {
         "is_dog": True,
@@ -295,31 +303,38 @@ def search(request: Request, body: SearchRequest):
     }
 
 
-# ── Ollama Vision LLM ────────────────────────────────────────────────────
+# ── Gemini Vision LLM ────────────────────────────────────────────────────
 
-async def call_ollama_vision(b64_image: str) -> dict:
-    payload = {
-        "model": OLLAMA_MODEL,
-        "prompt": VISION_PROMPT,
-        "images": [b64_image],
-        "stream": False,
-        "options": {"temperature": 0.2, "num_predict": 1024},
-    }
-    async with httpx.AsyncClient(timeout=240.0) as client:
-        resp = await client.post(f"{OLLAMA_URL}/api/generate", json=payload)
-        resp.raise_for_status()
-        data = resp.json()
-
-    raw_response = data.get("response", "")
+def _call_gemini_vision_sync(b64_image: str) -> dict:
+    import time
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    image_bytes = base64.b64decode(b64_image)
+    t0 = time.perf_counter()
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=[
+            VISION_PROMPT,
+            types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+        ],
+    )
+    elapsed_ms = (time.perf_counter() - t0) * 1000
+    raw_response = response.text
     json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
     if not json_match:
-        log.warning("Ollama returned no parseable JSON. Raw (first 500 chars): %.500s", raw_response)
+        log.warning("Gemini latency: %.0fms | FAILED (no parseable JSON). Raw (first 500 chars): %.500s", elapsed_ms, raw_response)
         return {"is_dog": False, "error": "Could not parse vision model response", "raw": raw_response}
     try:
-        return json.loads(json_match.group())
+        result = json.loads(json_match.group())
+        log.info("Gemini latency: %.0fms | is_dog=%s | breed=%s | breed_confidence=%s",
+                 elapsed_ms, result.get("is_dog"), result.get("breed"), result.get("breed_confidence"))
+        return result
     except json.JSONDecodeError as exc:
-        log.warning("Ollama JSON decode failed: %s. Raw (first 500 chars): %.500s", exc, raw_response)
+        log.warning("Gemini latency: %.0fms | FAILED (JSON decode: %s). Raw (first 500 chars): %.500s", elapsed_ms, exc, raw_response)
         return {"is_dog": False, "error": "Invalid JSON from vision model", "raw": raw_response}
+
+
+async def call_gemini_vision(b64_image: str) -> dict:
+    return await asyncio.to_thread(_call_gemini_vision_sync, b64_image)
 
 
 def _enrich_with_features(result, b64_image):
@@ -357,8 +372,13 @@ def _yolo_fallback_single(b64_image):
         return {"is_dog": False, "message": "No dog detected.", "_source": "yolo_fallback"}
 
     feature_list = result["feature"].tolist()
-    database = load_database()
-    match_id, similarity = find_match(result["feature"], database)
+    match_id, similarity, dogs_checked = None, 0.0, 0
+    try:
+        database = load_database()
+        match_id, similarity = find_match(result["feature"], database)
+        dogs_checked = len(database)
+    except Exception as e:
+        log.warning("DB unavailable during YOLO fallback (%s), skipping feature match", e)
 
     return {
         "is_dog": True,
@@ -380,7 +400,7 @@ def _yolo_fallback_single(b64_image):
         "match_found": match_id is not None,
         "match_id": match_id,
         "similarity": round(similarity * 100),
-        "dogs_checked": len(database),
+        "dogs_checked": dogs_checked,
         "_source": "yolo_fallback",
     }
 
@@ -388,35 +408,23 @@ def _yolo_fallback_single(b64_image):
 @app.get("/vision-status")
 @limiter.limit("30/minute")
 async def vision_status(request: Request):
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{OLLAMA_URL}/api/tags")
-            resp.raise_for_status()
-            tags = resp.json()
-            models = [m["name"] for m in tags.get("models", [])]
-            return {
-                "online": True,
-                "ollama_url": OLLAMA_URL,
-                "vision_model": OLLAMA_MODEL,
-                "model_loaded": any(OLLAMA_MODEL.split(":")[0] in m for m in models),
-                "available_models": models,
-            }
-    except Exception as e:
-        return {"online": False, "ollama_url": OLLAMA_URL, "vision_model": OLLAMA_MODEL, "error": str(e)}
+    if not GEMINI_API_KEY:
+        return {"online": False, "vision_model": GEMINI_MODEL, "provider": "gemini", "error": "GEMINI_API_KEY not set"}
+    return {"online": True, "vision_model": GEMINI_MODEL, "provider": "gemini"}
 
 
 @app.post("/analyse-vision")
 @limiter.limit("5/minute")
 async def analyse_vision(request: Request, body: VisionRequest, _=Depends(verify_api_key)):
     try:
-        result = await call_ollama_vision(body.image)
+        result = await call_gemini_vision(body.image)
         if result.get("is_dog"):
             result = _enrich_with_features(result, body.image)
             result["_source"] = "vision_llm"
             return result
         return {**result, "_source": "vision_llm"}
     except Exception as e:
-        log.warning("Ollama unavailable (%s), falling back to YOLO+MobileNetV2", e)
+        log.warning("Gemini unavailable (%s), falling back to YOLO+MobileNetV2", e)
         return _yolo_fallback_single(body.image)
 
 
@@ -429,7 +437,7 @@ async def analyse_vision_batch(request: Request, body: VisionBatchRequest, _=Dep
     # Vision LLM on first image
     primary_result = None
     try:
-        primary_result = await call_ollama_vision(body.images[0])
+        primary_result = await call_gemini_vision(body.images[0])
     except Exception as e:
         log.warning("Vision LLM failed: %s", e)
 

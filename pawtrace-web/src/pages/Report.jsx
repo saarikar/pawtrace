@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { analyzeImageBatch, saveFeature, getLocation, reverseGeocode, COLORS, SIZES, SEXES, AGES, BREEDS, checkBackend } from '../lib/vision.js'
+import { analyzeVisionBatch, saveFeature, getLocation, reverseGeocode, COLORS, SIZES, SEXES, AGES, BREEDS, checkBackend } from '../lib/vision.js'
 import { addDog, updateDog } from '../lib/data.js'
 import { supabase, isDemoMode } from '../lib/supabase.js'
 import { useApp } from '../App.jsx'
@@ -124,15 +124,18 @@ export default function ReportPage() {
   const runAnalysis = async () => {
     setStep('analyzing')
     const [result] = await Promise.all([
-      analyzeImageBatch(photos),
+      analyzeVisionBatch(photos),
       loc.lat ? Promise.resolve() : fetchLocation(),
     ])
     setAnalysis(result)
     if (result.is_dog) {
       setForm(f => ({
         ...f,
-        color: result.color ?? f.color,
-        size:  result.size  ?? f.size,
+        color:   result.color_category ?? result.color ?? f.color,
+        size:    result.size            ?? f.size,
+        sex:     result.sex             ?? f.sex,
+        age:     result.age_estimate    ?? f.age,
+        injured: result.injured         ?? f.injured,
       }))
     }
     setStep('review')
@@ -254,7 +257,7 @@ export default function ReportPage() {
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <div style={{ fontSize: 16, fontWeight: 600 }}>Analysing {photos.length} photo{photos.length !== 1 ? 's' : ''}...</div>
       <div style={{ fontSize: 13, color: TEXT_SECONDARY, textAlign: 'center', maxWidth: 280, lineHeight: 1.6 }}>
-        YOLO detecting dog → MobileNetV2 classifying breed → predicting colour & size → checking feature database
+        YOLO detecting dog → Gemini AI analysing breed, colour & size → MobileNetV2 extracting features → checking database
       </div>
     </div>
   )
@@ -322,8 +325,8 @@ export default function ReportPage() {
             {analysis.photos_analyzed != null && (
               <div style={{ fontSize: 11, color: TEXT_SECONDARY, marginBottom: 8 }}>{analysis.photos_analyzed} of {analysis.photos_submitted} photos had a dog detected</div>
             )}
-            <Bar label="Breed confidence (MobileNetV2)" value={analysis.breed_confidence} />
-            <Bar label="Dog detection (YOLOv8)" value={analysis.yolo_confidence} color="#5b8dee" />
+            <Bar label={analysis._source === 'vision_llm' ? 'Breed confidence (Gemini AI)' : 'Breed confidence (MobileNetV2)'} value={analysis._source === 'vision_llm' ? analysis.breed_confidence : analysis.per_photo?.[0]?.breed_confidence} />
+            <Bar label="Dog detection (YOLOv8)" value={analysis.yolo_confidence ?? analysis.per_photo?.[0]?.yolo_confidence} color="#5b8dee" />
             <Bar label="Feature similarity checked" value={analysis.similarity} />
             <div style={{ marginTop: 10, padding: '8px 10px', background: '#fff', borderRadius: 8, border: `1px solid ${BORDER_LIGHT}` }}>
               <div style={{ fontSize: 13, fontWeight: 700 }}>{analysis.breed}</div>
@@ -570,10 +573,9 @@ export default function ReportPage() {
               <div style={{ fontSize: 12, fontWeight: 700, color: TEXT_SECONDARY, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Pipeline</div>
               {[
                 ['1. YOLO v8',          'Detects and crops the dog from each photo'],
-                ['2. MobileNetV2',      'Classifies breed from 12 Indian dog types'],
-                ['3. Colour & size AI', 'Predicts colour and size from the crop'],
-                ['4. Aggregation',      'Majority vote across all photos for accuracy'],
-                ['5. Feature matching', 'Averaged 128-dim vector checked against database'],
+                ['2. Gemini AI',        'Analyses breed, colour, size, health & temperament'],
+                ['3. MobileNetV2',      'Extracts 128-dim feature vector for matching'],
+                ['4. Feature matching', 'Averaged vector checked against database'],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: `1px solid ${BORDER_LIGHT}`, fontSize: 13 }}>
                   <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 130, flexShrink: 0 }}>{k}</span>

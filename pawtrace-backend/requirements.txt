@@ -7,5 +7,5 @@ scikit-learn
 numpy
 supabase
 python-dotenv
-httpx
 slowapi
+google-genai

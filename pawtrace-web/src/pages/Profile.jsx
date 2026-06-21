@@ -123,7 +123,7 @@ export default function ProfilePage({ onSignOut }) {
             { k: 'Project', v: 'PawTrace India' },
             { k: 'Database', v: isDemoMode ? 'Demo mode' : 'Supabase' },
             { k: 'Breeds', v: '13 Indian types' },
-            { k: 'AI Model', v: 'YOLOv8 + MobileNetV2' },
+            { k: 'AI Model', v: 'YOLOv8 + Gemini AI + MobileNetV2' },
           ].map(item => (
             <div key={item.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: `1px solid ${C.border}` }}>
               <span style={{ color: C.textMuted, fontSize: 13 }}>{item.k}</span>
