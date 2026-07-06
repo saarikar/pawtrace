@@ -148,9 +148,9 @@ export default function ReportPage() {
       const bytes = new Uint8Array(binaryString.length)
       for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i)
       const blob = new Blob([bytes], { type: 'image/jpeg' })
-      const path = (newDog.dog_id || newDog.id) + '.jpg'
+      const path = (newDog.dog_id || newDog.id) + '_' + Date.now() + '.jpg'
       const { error: uploadError } = await supabase.storage
-        .from('dog-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true })
+        .from('dog-photos').upload(path, blob, { contentType: 'image/jpeg' })
       if (uploadError) {
         console.error('Storage upload error:', uploadError.message, uploadError)
         return

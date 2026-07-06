@@ -57,12 +57,14 @@ create table if not exists dogs (
 );
 
 -- Auto-generate dog_id like SD-001
+-- Uses max() so deleted rows never cause a duplicate-id collision
 create or replace function set_dog_id() returns trigger as $$
 declare
-  count_val integer;
+  next_val integer;
 begin
-  select count(*) + 1 into count_val from dogs;
-  new.dog_id := 'SD-' || lpad(count_val::text, 3, '0');
+  select coalesce(max(cast(regexp_replace(dog_id, '[^0-9]', '', 'g') as integer)), 0) + 1
+    into next_val from dogs;
+  new.dog_id := 'SD-' || lpad(next_val::text, 3, '0');
   return new;
 end;
 $$ language plpgsql;
