@@ -24,7 +24,7 @@ A community-driven platform for Indian cities to spot, report, and track stray a
 | ML — detection | YOLOv8n (COCO class 16 — dog) |
 | ML — classification | MobileNetV2 fine-tuned on 12 Indian breeds |
 | ML — dedup | Dense(128) feature extractor + cosine similarity (threshold 0.85) |
-| AI vision (optional) | Ollama Vision LLM (llava:7b) with YOLO fallback |
+| AI vision (optional) | Google Gemini (gemini-2.0-flash) with YOLO + MobileNetV2 fallback |
 
 ## Prerequisites
 
@@ -73,6 +73,14 @@ Create a `.env` file (never commit this):
 ```env
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key
+
+# Auth key for protected endpoints (/save, /analyse-vision, …).
+# Must match VITE_BACKEND_API_KEY in pawtrace-web/.env.local — pick any long random string.
+API_KEY=your-api-key
+
+# Google Gemini vision (optional). Leave blank to fall back to YOLO + MobileNetV2.
+GEMINI_API_KEY=your-gemini-api-key
+# GEMINI_MODEL=gemini-2.0-flash   # optional override
 ```
 
 ### Model files
@@ -98,52 +106,30 @@ Wait for:
 Application startup complete.
 ```
 
-The API is now running at `http://localhost:5000`.  
-Interactive docs: `http://localhost:5000/docs`
+The API is now running at `http://localhost:5001`.  
+Interactive docs: `http://localhost:5001/docs`
 
 ---
 
-## 2a. Ollama Vision Setup (Optional but Recommended)
+## 2a. Gemini Vision (Optional but Recommended)
 
-The backend uses [Ollama](https://ollama.com) to run the `llava:7b` vision model locally. This provides richer dog analysis — breed mix estimates, health observations, distinguishing marks, and temperament guesses. If Ollama is unavailable the backend automatically falls back to YOLO+MobileNetV2.
+For richer analysis — breed-mix estimates, health observations, distinguishing marks, injury detection, and temperament guesses — the backend calls **Google Gemini** (`gemini-2.0-flash`). If `GEMINI_API_KEY` is not set (or Gemini is unreachable), the backend automatically falls back to the local YOLO + MobileNetV2 pipeline, so the app keeps working without it.
 
-### What you need
+### Setup
 
-- ~4 GB disk space for the model
-- ~8 GB RAM (or a GPU with ≥8 GB VRAM for faster inference)
-
-### Non-Docker setup
-
-1. Download and install Ollama from [ollama.com](https://ollama.com)
-2. Pull the vision model (one-time, ~4 GB download):
-   ```bash
-   ollama pull llava:7b
+1. Create an API key at [Google AI Studio](https://aistudio.google.com/apikey).
+2. Add it to `pawtrace-backend/.env`:
+   ```env
+   GEMINI_API_KEY=your-gemini-api-key
    ```
-3. Ollama runs as a background service on `http://localhost:11434` — the backend will find it automatically.
-
-### Docker Compose setup
-
-The included `docker-compose.yml` now starts Ollama as a container alongside the backend:
-
-```bash
-docker compose up
-```
-
-On first run, Ollama will download `llava:7b` automatically. Subsequent starts use the cached model stored in the `ollama_data` volume.
-
-To pre-pull inside the container after the first `up`:
-```bash
-docker compose exec ollama ollama pull llava:7b
-```
+3. Restart the backend, then visit `http://localhost:5001/vision-status` — you should see `{"online": true, "provider": "gemini", ...}`.
 
 ### Environment variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `OLLAMA_URL` | `http://127.0.0.1:11434` | URL of the running Ollama instance |
-| `OLLAMA_VISION_MODEL` | `llava:7b` | Vision model to use |
-
-Set these in `pawtrace-backend/.env` to override for non-standard setups.
+| `GEMINI_API_KEY` | *(empty)* | Google Gemini API key. Empty → vision disabled, YOLO + MobileNetV2 fallback used. |
+| `GEMINI_MODEL` | `gemini-2.0-flash` | Gemini model to use. |
 
 ---
 
@@ -166,6 +152,12 @@ Edit `.env.local`:
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
+
+# Must match API_KEY in pawtrace-backend/.env
+VITE_BACKEND_API_KEY=your-api-key
+
+# Backend URL (optional — defaults to http://127.0.0.1:5001)
+VITE_BACKEND_URL=http://127.0.0.1:5001
 ```
 
 ### Install dependencies
@@ -188,7 +180,21 @@ npm run dev
 docker compose up --build
 ```
 
-This starts both the backend (port 5000) and frontend (port 5173).
+This starts the backend and frontend (web on port 5173). Note: the Docker backend is exposed on port **5000**, whereas the local `python app.py` path above runs on **5001**. To enable Gemini vision inside Docker, add `GEMINI_API_KEY` to the `pawtrace-backend` service's environment in `docker-compose.yml`.
+
+---
+
+## 5. Mobile App — Expo (optional)
+
+The React Native app lives in `pawtrace-mobile/`. Its Supabase URL/key and backend URL are configured in `app.json` under `expo.extra` (no `.env` needed).
+
+```bash
+cd pawtrace-mobile
+npm install
+npx expo start
+```
+
+Scan the QR code with the **Expo Go** app (iOS/Android), or press `a` / `i` to launch an emulator. The app talks to the backend at the `backendUrl` in `app.json` (default `http://localhost:5001`); when testing on a physical device, change it to your computer's LAN IP so the phone can reach the backend.
 
 ---
 
@@ -241,8 +247,8 @@ pawtrace/
 | `POST` | `/save` | Save a feature vector to Supabase |
 | `GET` | `/db` | List dogs with stored feature vectors |
 | `POST` | `/search` | Visual + attribute search with geo-ranking |
-| `GET` | `/vision-status` | Check Ollama Vision LLM availability |
-| `POST` | `/analyse-vision` | Ollama Vision analysis (falls back to YOLO) |
+| `GET` | `/vision-status` | Check Gemini vision availability |
+| `POST` | `/analyse-vision` | Gemini vision analysis (falls back to YOLO + MobileNetV2) |
 | `POST` | `/analyse-vision-batch` | Batch vision analysis |
 
 ---
@@ -251,8 +257,9 @@ pawtrace/
 
 - **No CSS files** — all styles are inline JS objects.
 - The backend must be running for AI breed analysis. The frontend degrades gracefully if the backend is unreachable.
-- If port 5000 is occupied on Windows:
+- Protected endpoints (`/save`, `/analyse-vision`, …) require an `X-API-Key` header matching `API_KEY`; the web app sends it automatically from `VITE_BACKEND_API_KEY`.
+- If port 5001 is occupied on Windows:
   ```powershell
-  $p = (Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue).OwningProcess
+  $p = (Get-NetTCPConnection -LocalPort 5001 -ErrorAction SilentlyContinue).OwningProcess
   if ($p) { Stop-Process -Id $p -Force }
   ```
