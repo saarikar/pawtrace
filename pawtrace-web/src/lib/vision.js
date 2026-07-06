@@ -121,7 +121,7 @@ export async function saveFeature(dogId, feature) {
   try {
     const res = await fetch(BACKEND_URL + '/save', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
       body: JSON.stringify({ dog_id: dogId, feature }),
     })
     return await res.json()
