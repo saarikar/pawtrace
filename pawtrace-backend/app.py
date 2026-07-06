@@ -8,10 +8,10 @@ Setup:
 Run:
     python app.py
     # or with auto-reload:
-    uvicorn app:app --port 5000 --reload
+    uvicorn app:app --port 5001 --reload
 
-Runs on http://localhost:5000
-Docs at  http://localhost:5000/docs
+Runs on http://localhost:5001
+Docs at  http://localhost:5001/docs
 """
 
 import asyncio
