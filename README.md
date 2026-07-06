@@ -180,7 +180,7 @@ npm run dev
 docker compose up --build
 ```
 
-This starts the backend and frontend (web on port 5173). Note: the Docker backend is exposed on port **5000**, whereas the local `python app.py` path above runs on **5001**. Compose loads `pawtrace-backend/.env` via `env_file`, so `GEMINI_API_KEY` and `API_KEY` carry over automatically — no extra config needed for Gemini vision in Docker.
+This starts the backend (port **5001**) and frontend (web on port **5173**). Compose loads `pawtrace-backend/.env` via `env_file`, so `GEMINI_API_KEY` and `API_KEY` carry over automatically — no extra config needed for Gemini vision in Docker.
 
 ---
 

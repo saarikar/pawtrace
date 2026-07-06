@@ -21,9 +21,9 @@ RUN if [ -n "$YOLO_WEIGHTS_URL" ]; then \
     fi
 COPY yolov8n.pt* ./
 
-EXPOSE 5000
+EXPOSE 5001
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/status')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5001/status')" || exit 1
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5001"]
